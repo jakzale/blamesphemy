@@ -1,8 +1,8 @@
-name:                blasphemy
+name:                blamesphemy
 version:             0.1.0.0
-synopsis:            Gradually Typed Haskell
+synopsis:            Gradually Typed Haskell (with Blame)
 description:         Please see README.md
-homepage:            http://github.com/jakzale/blasphemy#readme
+homepage:            http://github.com/jakzale/blamesphemy#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Jakub Zalewski
@@ -18,6 +18,6 @@ library
   hs-source-dirs:
       src
   exposed-modules:
-      Blasphemy
+      Blamesphemy
   build-depends:
       base >= 4.9 && < 5
