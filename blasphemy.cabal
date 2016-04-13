@@ -1,0 +1,23 @@
+name:                blasphemy
+version:             0.1.0.0
+synopsis:            Gradually Typed Haskell
+description:         Please see README.md
+homepage:            http://github.com/jakzale/blasphemy#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Jakub Zalewski
+maintainer:          jakzale@gmail.com
+copyright:           Copyright: (c) 2016 Jakub Zalewski
+category:            Compilers/Interpreters
+build-type:          Simple
+cabal-version:       >=1.10
+
+library 
+  default-language:
+      Haskell2010
+  hs-source-dirs:
+      src
+  exposed-modules:
+      Blasphemy
+  build-depends:
+      base >= 4.9 && < 5
