@@ -2,11 +2,14 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Blamesphemy where
 
 import Type.Reflection
 -- import Data.Proxy
+import Data.Maybe
 
 aList = typeRep @[Int]
 aFunction = typeRep @(Int -> Char)
@@ -14,6 +17,7 @@ aFunction = typeRep @(Int -> Char)
 -- My own implementation of Dynamic
 
 data Any where
+  -- this is supposed to be a hidden constructor
   MkAny :: TypeRep a -> a -> Any
 
 toAny :: Typeable a => a -> Any
@@ -61,3 +65,24 @@ isFun v = case (typeRep :: TypeRep a) of
             TRFun _ _ -> True
             otherwise -> False
 
+
+class Consistent a b where
+  cCast :: a -> b
+
+-- Consistency over Any is symmetric
+instance (Typeable a) => Consistent a Any where
+  cCast = toAny
+
+instance (Typeable b) => Consistent Any b where
+  cCast = fromJust . fromAny
+
+-- Consistency is reflexive
+instance Consistent a a where
+  cCast = id
+
+-- Wrap rule
+instance (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
+  cCast f = g
+    where
+      g :: c -> d
+      g x = cCast (g (cCast x))
