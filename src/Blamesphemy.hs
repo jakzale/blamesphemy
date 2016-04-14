@@ -41,12 +41,17 @@ foo' = cast @(Integer) @(Any) foo
 foo'' :: Maybe Integer
 foo'' = foo' >>= cast @(Any) @(Integer)
 
--- So, here is a problem, because Any should be a special type
-type Label = forall a. a
-
 bcast :: forall a b c d. (Typeable a, Typeable b) => a -> (c -> b) -> (d -> b) -> b
 bcast v p q
   = case (typeRep :: TypeRep a) `eqTypeRep` (typeRep :: TypeRep b) of
       Nothing    -> (p undefined)
       Just HRefl -> v
+
+example1 :: Integer
+example1 = bcast (42 :: Integer) (error "positive blame") (error "negative blame")
+-- 42
+
+example2 :: Bool
+example2 = bcast (42 :: Integer) (error "positive blame") (error "negative blame")
+-- "positive blame"
 
