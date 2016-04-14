@@ -4,6 +4,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module Blamesphemy where
 
@@ -28,14 +32,14 @@ class Consistent a b where
   cast :: a -> b
 
 -- Consistency is reflexive
-instance Consistent a a where
-  cast = id
+-- instance Consistent a a where
+-- cast = id
 
 -- Consistency over Any is symmetric
-instance (Typeable a) => Consistent a Any where
+instance (Typeable a, NotAny a ~ 'True) => Consistent a Any where
   cast = toAny
 
-instance (Typeable b) => Consistent Any b where
+instance (Typeable b, NotAny b ~ 'True) => Consistent Any b where
   cast = fromJust . fromAny
 
 
@@ -62,4 +66,12 @@ foo = cast f
 example1 :: Integer
 example1 = (cast @(Any -> Any) @(Integer -> Integer) foo) 3
 
+-- Important note
+-- this one will not typecheck, due to ovelapping instances
+-- test1 :: Any -> Any
+-- test1 = cast @(Any) @(Any -> Any) undefined
 
+{-
+test2 :: Any
+test2 = cast @(Any) @(Any) undefined
+-}
