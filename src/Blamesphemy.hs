@@ -55,3 +55,9 @@ example2 :: Bool
 example2 = bcast (42 :: Integer) (error "positive blame") (error "negative blame")
 -- "positive blame"
 
+-- "Here comes the blasphemy!"
+isFun :: forall a. (Typeable a) => a -> Bool
+isFun v = case (typeRep :: TypeRep a) of
+            TRFun _ _ -> True
+            otherwise -> False
+
