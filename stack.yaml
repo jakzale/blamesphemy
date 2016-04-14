@@ -1,6 +1,6 @@
-# ghc-8.1.20160412-x86_64-unknown-linux.tar.xz
 flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-resolver: ghc-8.1.20160412
+# Ben Gamari's wip-ttypeable
+resolver: ghc-8.1.20160318
