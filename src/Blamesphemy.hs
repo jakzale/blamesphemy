@@ -43,7 +43,7 @@ instance (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
   cast f = g
     where
       g :: c -> d
-      g x = cast (g (cast x))
+      g x = cast @(b) @(d) (f (cast @(c) @(a) x))
 
 -- This one needs to do additional work!
 instance Consistent Any (Any -> Any) where
@@ -51,3 +51,12 @@ instance Consistent Any (Any -> Any) where
     = case ra `eqTypeRep` TRFun (typeRep :: TypeRep Any) (typeRep :: TypeRep Any) of
         Just HRefl  -> x
         Nothing -> error "not a function"
+
+f :: Integer -> Integer
+f = (+5)
+
+foo :: Any -> Any
+foo = cast f
+
+example1 :: Integer
+example1 = (cast @(Any -> Any) @(Integer -> Integer) foo) 3
