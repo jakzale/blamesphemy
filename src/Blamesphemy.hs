@@ -27,6 +27,10 @@ fromAny (MkAny (ra :: TypeRep a) (x :: a))
 class Consistent a b where
   cast :: a -> b
 
+-- Consistency is reflexive
+instance Consistent a a where
+  cast = id
+
 -- Consistency over Any is symmetric
 instance (Typeable a) => Consistent a Any where
   cast = toAny
@@ -34,9 +38,6 @@ instance (Typeable a) => Consistent a Any where
 instance (Typeable b) => Consistent Any b where
   cast = fromJust . fromAny
 
--- Consistency is reflexive
-instance Consistent a a where
-  cast = id
 
 -- Wrap rule
 instance (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
@@ -60,3 +61,5 @@ foo = cast f
 
 example1 :: Integer
 example1 = (cast @(Any -> Any) @(Integer -> Integer) foo) 3
+
+
