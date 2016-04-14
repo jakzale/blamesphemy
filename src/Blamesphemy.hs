@@ -8,14 +8,9 @@
 module Blamesphemy where
 
 import Type.Reflection
--- import Data.Proxy
 import Data.Maybe
 
-aList = typeRep @[Int]
-aFunction = typeRep @(Int -> Char)
-
 -- My own implementation of Dynamic
-
 data Any where
   -- this is supposed to be a hidden constructor
   MkAny :: TypeRep a -> a -> Any
@@ -29,60 +24,30 @@ fromAny (MkAny (ra :: TypeRep a) (x :: a))
     HRefl <- ra `eqTypeRep` (typeRep :: TypeRep d)
     return x
 
--- Implementation of cast from Data.Typeable
-cast :: forall a b. (Typeable a, Typeable b) => a -> Maybe b
-cast x
-  = do
-    HRefl <- (typeRep :: TypeRep a) `eqTypeRep` (typeRep :: TypeRep b)
-    return x
-
-foo :: Integer
-foo = 42
-
-foo' :: Maybe Any
-foo' = cast @(Integer) @(Any) foo
-
-foo'' :: Maybe Integer
-foo'' = foo' >>= cast @(Any) @(Integer)
-
-bcast :: forall a b c d. (Typeable a, Typeable b) => a -> (c -> b) -> (d -> b) -> b
-bcast v p q
-  = case (typeRep :: TypeRep a) `eqTypeRep` (typeRep :: TypeRep b) of
-      Nothing    -> (p undefined)
-      Just HRefl -> v
-
-example1 :: Integer
-example1 = bcast (42 :: Integer) (error "positive blame") (error "negative blame")
--- 42
-
-example2 :: Bool
-example2 = bcast (42 :: Integer) (error "positive blame") (error "negative blame")
--- "positive blame"
-
--- "Here comes the blasphemy!"
-isFun :: forall a. (Typeable a) => a -> Bool
-isFun v = case (typeRep :: TypeRep a) of
-            TRFun _ _ -> True
-            otherwise -> False
-
-
 class Consistent a b where
-  cCast :: a -> b
+  cast :: a -> b
 
 -- Consistency over Any is symmetric
 instance (Typeable a) => Consistent a Any where
-  cCast = toAny
+  cast = toAny
 
 instance (Typeable b) => Consistent Any b where
-  cCast = fromJust . fromAny
+  cast = fromJust . fromAny
 
 -- Consistency is reflexive
 instance Consistent a a where
-  cCast = id
+  cast = id
 
 -- Wrap rule
 instance (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
-  cCast f = g
+  cast f = g
     where
       g :: c -> d
-      g x = cCast (g (cCast x))
+      g x = cast (g (cast x))
+
+-- This one needs to do additional work!
+instance Consistent Any (Any -> Any) where
+  cast (MkAny (ra :: TypeRep a) (x :: a))
+    = case ra `eqTypeRep` TRFun (typeRep :: TypeRep Any) (typeRep :: TypeRep Any) of
+        Just HRefl  -> x
+        Nothing -> error "not a function"
