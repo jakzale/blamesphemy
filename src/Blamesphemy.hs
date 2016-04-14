@@ -1,19 +1,31 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ConstraintKinds #-}
 
 module Blamesphemy where
 
 import Type.Reflection
 import Data.Maybe
 
+
+data Any where
+  Any :: forall a. TypeRep a -> a -> Any
+
+toAny :: (Typeable a) => a -> Any
+toAny v = Any typeRep v
+
+fromAny :: forall a. (Typeable a) => Any -> Maybe a
+fromAny (Any ra x)
+  = do HRefl <- ra `eqTypeRep` (typeRep :: TypeRep a)
+       return x
+
+cast :: (Typeable a) => a -> Any
+cast = toAny
+
+-- The main idea is that it should not be allowed!
+test = toAny (toAny True)
+{-
 -- My own implementation of Dynamic
 data Any where
   -- this is supposed to be a hidden constructor
@@ -74,4 +86,5 @@ example1 = (cast @(Any -> Any) @(Integer -> Integer) foo) 3
 {-
 test2 :: Any
 test2 = cast @(Any) @(Any) undefined
+-}
 -}
