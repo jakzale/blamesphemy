@@ -137,10 +137,22 @@ testApplyAnyToAny' = TestCase $ assertEqual
           g = cast @(Integer -> Integer) @(Any) f
           h = cast @(Any) @(Any -> Any) g
 
+testApplyAnyToAny'' = TestCase $ assertEqual
+  "I should be able to cast a fun to Any -> Any then to Any and apply it"
+  a
+  b
+    where a = f 5
+          b = i 5
+          f = (+5)
+          g = cast @(Integer -> Integer) @(Any -> Any) f
+          h = cast @(Any -> Any) @(Any) g
+          i = cast @(Any) @(Integer -> Integer) h
+
 main :: IO Counts
 main = runTestTT $ TestList
   [ testAnyAndBack
   , testAnyAndBack'
   , testApplyAnyToAny
   , testApplyAnyToAny'
+  , testApplyAnyToAny''
   ]
