@@ -28,7 +28,7 @@ fromAny (Any r v)
 class Consistent a b where
   cast :: a -> b
 
-instance {-# OVERLAPPABLE #-} Consistent a a where
+instance Consistent a a where
   cast = id
 
 instance (Typeable a) => Consistent a Any where
@@ -37,28 +37,34 @@ instance (Typeable a) => Consistent a Any where
 instance (Typeable b) => Consistent Any b where
   cast = fromJust . fromAny
 
-instance {-# OVERLAPS #-} Consistent Any Any where
+instance {-# OVERLAPPING #-} Consistent Any Any where
   cast = id
 
 -- wrap rule
-instance (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
+instance {-# OVERLAPPING #-} (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
   cast f = g
     where
       g :: c -> d
       g x = cast @(b) @(d) (f (cast @(c) @(a) x))
 
+{-
 -- Ensure that whatever is inside will be first cast to * -> *
-instance {-# OVERLAPS #-} (Typeable a, Typeable b) => Consistent (a -> b) Any where
+instance {-# OVERLAPPING #-} (Typeable a, Typeable b) => Consistent (a -> b) Any where
   cast f = cast @(Any -> Any) @(Any) g
     where
       g :: Any -> Any
       g = cast @(a -> b) @(Any -> Any) f
+-}
 
-instance {-# OVERLAPS #-} Consistent Any (Any -> Any) where
+-- These two are necessary
+instance {-# OVERLAPPING #-} Consistent Any (Any -> Any) where
   cast (Any r f)
     = case r `eqTypeRep` TRFun (typeRep :: TypeRep Any) (typeRep :: TypeRep Any) of
         Just HRefl -> f
         Nothing -> error "not a function"
+
+instance {-# OVERLAPPING #-} Consistent (Any -> Any) Any where
+  cast = toAny
 
 {-
  -- This bit type checks.  But it is not really useful...
@@ -87,37 +93,40 @@ instance (Typeable a, Typeable b) => Consistent Any (a -> b) where
 -}
 
 -- Find a way to prevent this from overlapping
-test = cast @(Any) @(Any) undefined
-test1 = cast @(Any) @(Any->Any) undefined
-test2 = cast @(Any->Any) @(Any) undefined
 
-{-
+should_compile1 = cast @(Any) @(Any) undefined
+should_compile2 = cast @(Any) @(Any->Any) undefined
+should_compile3 = cast @(Any->Any) @(Any) undefined
 
+-- Casting a number
+aAny :: Any
+aAny = cast @(Integer) @(Any) 5
 
+foo :: Integer -> Integer
+foo = (+3)
 
--- This one needs to do additional work!
-instance Consistent Any (Any -> Any) where
-  cast (MkAny (ra :: TypeRep a) (x :: a))
-    = case ra `eqTypeRep` TRFun (typeRep :: TypeRep Any) (typeRep :: TypeRep Any) of
-        Just HRefl  -> x
-        Nothing -> error "not a function"
+fooAnyToAny :: Any -> Any
+fooAnyToAny = cast foo
 
-f :: Integer -> Integer
-f = (+5)
+fooAny :: Any
+fooAny = cast fooAnyToAny
 
-foo :: Any -> Any
-foo = cast f
+-- When Applying Any
+bAny :: Any
+bAny = fooAnyToAny aAny
 
-example1 :: Integer
-example1 = (cast @(Any -> Any) @(Integer -> Integer) foo) 3
+b :: Integer
+b = cast bAny
 
--- Important note
--- this one will not typecheck, due to ovelapping instances
--- test1 :: Any -> Any
--- test1 = cast @(Any) @(Any -> Any) undefined
+-- When Applying Any'
+fooAny' :: Any
+fooAny' = cast @(Integer->Integer) @(Any) foo
 
-{-
-test2 :: Any
-test2 = cast @(Any) @(Any) undefined
--}
--}
+foo' :: Integer -> Integer
+foo' = cast fooAny'
+
+bAny' :: Any
+bAny' = (cast @(Any) @(Any -> Any) fooAny') aAny
+
+b' :: Integer
+b' = cast bAny'
