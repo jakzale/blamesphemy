@@ -60,6 +60,32 @@ instance {-# OVERLAPS #-} Consistent Any (Any -> Any) where
         Just HRefl -> f
         Nothing -> error "not a function"
 
+{-
+ -- This bit type checks.  But it is not really useful...
+instance (Typeable a, Typeable b) => Consistent Any (a -> b) where
+  cast (Any r f)
+    = case r `eqTypeRep` TRFun ra rb of
+        Just HRefl -> f
+        Nothing -> error "not a function"
+      where
+        ra :: TypeRep a
+        ra = typeRep
+        rb :: TypeRep b
+        rb = typeRep
+-}
+
+{-
+-- This one is a bit frustrating...
+instance (Typeable a, Typeable b) => Consistent Any (a -> b) where
+  cast (Any r f)
+    = case r of
+        TRFun (ra :: TypeRep arg) (rb :: TypeRep res) ->
+          -- Unifying types for r and (arg -> res)
+          -- This bit will not work, because it does not know that both of them are typeable
+          cast @(arg -> res) @(a -> b) f
+        otherwise -> error "not a function"
+-}
+
 -- Find a way to prevent this from overlapping
 test = cast @(Any) @(Any) undefined
 test1 = cast @(Any) @(Any->Any) undefined
