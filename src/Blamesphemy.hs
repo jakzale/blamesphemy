@@ -104,9 +104,6 @@ should_compile3 = cast @(Any->Any) @(Any) undefined
 
 -- Dynamic Test Suite
 -- Casting a number
-aAny :: Any
-aAny = cast @(Integer) @(Any) 5
-
 testAnyAndBack = TestCase $ assertEqual
   "Cast to Any should be reversible"
   (3 :: Integer)
@@ -129,38 +126,21 @@ testApplyAnyToAny = TestCase $ assertEqual
           c = cast @(Integer) @(Any) 5
           g = cast @(Integer -> Integer) @(Any -> Any) f
 
-foo :: Integer -> Integer
-foo = (+3)
-
-fooAnyToAny :: Any -> Any
-fooAnyToAny = cast foo
-
-fooAny :: Any
-fooAny = cast fooAnyToAny
-
--- When Applying Any
-bAny :: Any
-bAny = fooAnyToAny aAny
-
-b :: Integer
-b = cast bAny
-
--- When Applying Any'
-fooAny' :: Any
-fooAny' = cast @(Integer->Integer) @(Any) foo
-
-foo' :: Integer -> Integer
-foo' = cast fooAny'
-
-bAny' :: Any
-bAny' = (cast @(Any) @(Any -> Any) fooAny') aAny
-
-b' :: Integer
-b' = cast bAny'
+testApplyAnyToAny' = TestCase $ assertEqual
+  "I should be able to cast a fun to Any then Any->Any and apply it"
+  a
+  b
+    where a = f 5
+          f = (+5)
+          b = cast @(Any) @(Integer) (h c)
+          c = cast @(Integer) @(Any) 5
+          g = cast @(Integer -> Integer) @(Any) f
+          h = cast @(Any) @(Any -> Any) g
 
 main :: IO Counts
 main = runTestTT $ TestList
   [ testAnyAndBack
   , testAnyAndBack'
   , testApplyAnyToAny
+  , testApplyAnyToAny'
   ]
