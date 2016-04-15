@@ -9,7 +9,8 @@ module Blamesphemy where
 
 import Type.Reflection
 import Data.Maybe
-import GHC.Exts hiding (Any)
+import Test.HUnit
+
 
 data Any where
   Any :: forall a. TypeRep a -> a -> Any
@@ -94,13 +95,39 @@ instance (Typeable a, Typeable b) => Consistent Any (a -> b) where
 
 -- Find a way to prevent this from overlapping
 
+
+-- Static Test Suite
 should_compile1 = cast @(Any) @(Any) undefined
 should_compile2 = cast @(Any) @(Any->Any) undefined
 should_compile3 = cast @(Any->Any) @(Any) undefined
 
+
+-- Dynamic Test Suite
 -- Casting a number
 aAny :: Any
 aAny = cast @(Integer) @(Any) 5
+
+testAnyAndBack = TestCase $ assertEqual
+  "Cast to Any should be reversible"
+  (3 :: Integer)
+  (cast @(Any) @(Integer) (cast @(Integer) @(Any) 3))
+
+testAnyAndBack' = TestCase $ assertEqual
+  "Cast a function to any should be reversible"
+  (f 5)
+  (f' 5)
+    where f = (+5)
+          f' = cast @(Any) @(Integer -> Integer) (cast @(Integer -> Integer) @(Any) f)
+
+testApplyAnyToAny = TestCase $ assertEqual
+  "Applying Any -> Any should work"
+  a
+  b
+    where a = f 5
+          f = (+5)
+          b = cast @(Any) @(Integer) (g c)
+          c = cast @(Integer) @(Any) 5
+          g = cast @(Integer -> Integer) @(Any -> Any) f
 
 foo :: Integer -> Integer
 foo = (+3)
@@ -130,3 +157,10 @@ bAny' = (cast @(Any) @(Any -> Any) fooAny') aAny
 
 b' :: Integer
 b' = cast bAny'
+
+main :: IO Counts
+main = runTestTT $ TestList
+  [ testAnyAndBack
+  , testAnyAndBack'
+  , testApplyAnyToAny
+  ]

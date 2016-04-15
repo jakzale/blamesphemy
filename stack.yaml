@@ -2,5 +2,6 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-# Ben Gamari's wip-ttypeable
+extra-deps:
+- HUnit-1.3.1.1
 resolver: ghc-8.1.20160318
