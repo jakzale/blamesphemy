@@ -2,57 +2,51 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+
+ {-
+  Some reading material
+  https://wiki.haskell.org/GHC/AdvancedOverlap#Solution_1_.28using_safer_overlapping_instances.29 
+  -}
 
 module Blamesphemy where
 
 import Type.Reflection
 import Data.Maybe
+import GHC.Exts hiding (Any)
 
-
-data Any where
+data Any :: * where
   Any :: forall a. TypeRep a -> a -> Any
 
 toAny :: (Typeable a) => a -> Any
 toAny v = Any typeRep v
 
 fromAny :: forall a. (Typeable a) => Any -> Maybe a
-fromAny (Any ra x)
-  = do HRefl <- ra `eqTypeRep` (typeRep :: TypeRep a)
-       return x
-
-cast :: (Typeable a) => a -> Any
-cast = toAny
-
--- The main idea is that it should not be allowed!
-test = toAny (toAny True)
-{-
--- My own implementation of Dynamic
-data Any where
-  -- this is supposed to be a hidden constructor
-  MkAny :: TypeRep a -> a -> Any
-
-toAny :: Typeable a => a -> Any
-toAny v = MkAny typeRep v
-
-fromAny :: forall d. Typeable d => Any -> Maybe d
-fromAny (MkAny (ra :: TypeRep a) (x :: a))
+fromAny (Any r v)
   = do
-    HRefl <- ra `eqTypeRep` (typeRep :: TypeRep d)
-    return x
+    HRefl <- r `eqTypeRep` q
+    pure v
+      where q = (typeRep :: TypeRep a)
 
+-- Next to model type consistency
 class Consistent a b where
   cast :: a -> b
 
--- Consistency is reflexive
--- instance Consistent a a where
--- cast = id
+instance Typeable a => Consistent a Any where
+  cast = undefined
 
--- Consistency over Any is symmetric
-instance (Typeable a, NotAny a ~ 'True) => Consistent a Any where
-  cast = toAny
+instance Typeable b => Consistent Any b where
+  cast = undefined
 
-instance (Typeable b, NotAny b ~ 'True) => Consistent Any b where
-  cast = fromJust . fromAny
+-- Find a way to prevent this from overlapping
+test = cast @(Any) @(Any) undefined
+
+{-
 
 
 -- Wrap rule
