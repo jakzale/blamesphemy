@@ -4,15 +4,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-
- {-
-  Some reading material
-  https://wiki.haskell.org/GHC/AdvancedOverlap#Solution_1_.28using_safer_overlapping_instances.29 
-  -}
 
 module Blamesphemy where
 
@@ -20,7 +11,7 @@ import Type.Reflection
 import Data.Maybe
 import GHC.Exts hiding (Any)
 
-data Any :: * where
+data Any where
   Any :: forall a. TypeRep a -> a -> Any
 
 toAny :: (Typeable a) => a -> Any
@@ -37,24 +28,46 @@ fromAny (Any r v)
 class Consistent a b where
   cast :: a -> b
 
-instance Typeable a => Consistent a Any where
-  cast = undefined
+instance {-# OVERLAPPABLE #-} Consistent a a where
+  cast = id
 
-instance Typeable b => Consistent Any b where
-  cast = undefined
+instance (Typeable a) => Consistent a Any where
+  cast = toAny
 
--- Find a way to prevent this from overlapping
-test = cast @(Any) @(Any) undefined
+instance (Typeable b) => Consistent Any b where
+  cast = fromJust . fromAny
 
-{-
+instance {-# OVERLAPS #-} Consistent Any Any where
+  cast = id
 
-
--- Wrap rule
+-- wrap rule
 instance (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
   cast f = g
     where
       g :: c -> d
       g x = cast @(b) @(d) (f (cast @(c) @(a) x))
+
+-- Ensure that whatever is inside will be first cast to * -> *
+instance {-# OVERLAPS #-} (Typeable a, Typeable b) => Consistent (a -> b) Any where
+  cast f = cast @(Any -> Any) @(Any) g
+    where
+      g :: Any -> Any
+      g = cast @(a -> b) @(Any -> Any) f
+
+instance {-# OVERLAPS #-} Consistent Any (Any -> Any) where
+  cast (Any r f)
+    = case r `eqTypeRep` TRFun (typeRep :: TypeRep Any) (typeRep :: TypeRep Any) of
+        Just HRefl -> f
+        Nothing -> error "not a function"
+
+-- Find a way to prevent this from overlapping
+test = cast @(Any) @(Any) undefined
+test1 = cast @(Any) @(Any->Any) undefined
+test2 = cast @(Any->Any) @(Any) undefined
+
+{-
+
+
 
 -- This one needs to do additional work!
 instance Consistent Any (Any -> Any) where
