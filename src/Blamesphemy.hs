@@ -48,53 +48,25 @@ instance {-# OVERLAPPING #-} (Consistent c a, Consistent b d) => Consistent (a->
       g :: c -> d
       g x = cast @(b) @(d) (f (cast @(c) @(a) x))
 
-{-
--- Ensure that whatever is inside will be first cast to * -> *
-instance {-# OVERLAPPING #-} (Typeable a, Typeable b) => Consistent (a -> b) Any where
-  cast f = cast @(Any -> Any) @(Any) g
-    where
-      g :: Any -> Any
-      g = cast @(a -> b) @(Any -> Any) f
--}
-
--- These two are necessary
+-- Special behavriour when casting from Any to (Any -> Any)
 instance {-# OVERLAPPING #-} Consistent Any (Any -> Any) where
   cast (Any r f)
     = case r `eqTypeRep` TRFun (typeRep :: TypeRep Any) (typeRep :: TypeRep Any) of
         Just HRefl -> f
         Nothing -> error "not a function"
 
+-- Special behaviour when casting from (Any -> Any) to Any
+-- WARNING!: Necessary to prevent circular aplications of (a->b) to Any
 instance {-# OVERLAPPING #-} Consistent (Any -> Any) Any where
   cast = toAny
 
-{-
- -- This bit type checks.  But it is not really useful...
-instance (Typeable a, Typeable b) => Consistent Any (a -> b) where
-  cast (Any r f)
-    = case r `eqTypeRep` TRFun ra rb of
-        Just HRefl -> f
-        Nothing -> error "not a function"
-      where
-        ra :: TypeRep a
-        ra = typeRep
-        rb :: TypeRep b
-        rb = typeRep
--}
+-- Decomposing a cast from Any to (a->b)
+instance {-# OVERLAPPING #-} (Typeable a, Typeable b) => Consistent Any (a->b) where
+  cast f = cast @(Any -> Any) @(a -> b) (cast @(Any) @(Any -> Any) f)
 
-{-
--- This one is a bit frustrating...
-instance (Typeable a, Typeable b) => Consistent Any (a -> b) where
-  cast (Any r f)
-    = case r of
-        TRFun (ra :: TypeRep arg) (rb :: TypeRep res) ->
-          -- Unifying types for r and (arg -> res)
-          -- This bit will not work, because it does not know that both of them are typeable
-          cast @(arg -> res) @(a -> b) f
-        otherwise -> error "not a function"
--}
-
--- Find a way to prevent this from overlapping
-
+-- Decomposig a cast from (a->b) to Any
+instance {-# OVERLAPPING #-} (Typeable a, Typeable b) => Consistent (a->b) Any where
+  cast f = cast @(Any -> Any) @(Any) (cast @(a -> b) @(Any -> Any) f)
 
 -- Static Test Suite
 should_compile1 = cast @(Any) @(Any) undefined
