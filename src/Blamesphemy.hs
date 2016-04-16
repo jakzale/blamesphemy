@@ -26,8 +26,11 @@ fromAny (Any r v)
       where q = (typeRep :: TypeRep a)
 
 -- Next to model type consistency
+-- NOTE: This implements consistent cast, which will be statically enforced to
+-- occur only between consistent types.
 class Consistent a b where
   cast :: a -> b
+
 
 -- This instance is incoherent, as it is the most general, but it should always hold first!
 instance {-# INCOHERENT #-} Consistent a a where
