@@ -29,7 +29,8 @@ fromAny (Any r v)
 class Consistent a b where
   cast :: a -> b
 
-instance Consistent a a where
+-- This instance is incoherent, as it is the most general, but it should always hold first!
+instance {-# INCOHERENT #-} Consistent a a where
   cast = id
 
 instance (Typeable a) => Consistent a Any where
@@ -41,8 +42,9 @@ instance (Typeable b) => Consistent Any b where
 instance {-# OVERLAPPING #-} Consistent Any Any where
   cast = id
 
+
 -- wrap rule
-instance {-# OVERLAPPING #-} (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
+instance (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
   cast f = g
     where
       g :: c -> d
@@ -68,10 +70,19 @@ instance {-# OVERLAPPING #-} (Typeable a, Typeable b) => Consistent Any (a->b) w
 instance {-# OVERLAPPING #-} (Typeable a, Typeable b) => Consistent (a->b) Any where
   cast f = cast @(Any -> Any) @(Any) (cast @(a -> b) @(Any -> Any) f)
 
+
 -- Static Test Suite
-should_compile1 = cast @(Any) @(Any) undefined
-should_compile2 = cast @(Any) @(Any->Any) undefined
-should_compile3 = cast @(Any->Any) @(Any) undefined
+should_compile1 :: Any -> Any
+should_compile1 = cast @(Any) @(Any)
+
+should_compile2 :: Any -> (Any -> Any)
+should_compile2 = cast @(Any) @(Any -> Any)
+
+should_compile3 :: (Any -> Any) -> Any
+should_compile3 = cast @(Any->Any) @(Any)
+
+should_compile4 :: forall a b c d. (Consistent c a, Consistent b d) => (a -> b) -> (c -> d)
+should_compile4 = cast @(a->b) @(c->d)
 
 
 -- Dynamic Test Suite
@@ -120,6 +131,24 @@ testApplyAnyToAny'' = TestCase $ assertEqual
           h = cast @(Any -> Any) @(Any) g
           i = cast @(Any) @(Integer -> Integer) h
 
+testIdemCast = TestCase $ assertEqual
+  "I should be able to cast Integer to an Integer"
+  a
+  b
+    where
+      a = 5
+      b = cast @(Integer) @(Integer) 5
+
+testIdemCast' = TestCase $ assertEqual
+  "I should be able to cast (a->b) to (a->b)"
+  a
+  b
+    where
+      a = f 5
+      b = g 5
+      f = (+ 5)
+      g = cast @(Integer -> Integer) @(Integer -> Integer) f
+
 main :: IO Counts
 main = runTestTT $ TestList
   [ testAnyAndBack
@@ -127,4 +156,6 @@ main = runTestTT $ TestList
   , testApplyAnyToAny
   , testApplyAnyToAny'
   , testApplyAnyToAny''
+  , testIdemCast
+  , testIdemCast'
   ]
