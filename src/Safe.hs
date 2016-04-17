@@ -5,7 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Blamesphemy where
+module Safe where
 
 import Type.Reflection
 import Data.Maybe

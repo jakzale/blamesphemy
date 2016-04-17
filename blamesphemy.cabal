@@ -18,7 +18,8 @@ library
   hs-source-dirs:
       src
   exposed-modules:
-      Blamesphemy
+      UnSafe
+    , Safe
   build-depends:
       base >= 4.9 && < 5
     , HUnit == 1.3.1.*
