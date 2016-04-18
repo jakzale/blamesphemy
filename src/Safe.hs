@@ -50,3 +50,8 @@ instance Monad Blame where
   a >>= f = MkBlame $ do
     b <- unBlame a
     unBlame $ f b
+
+-- Simple implementation of cast
+cast :: (Typeable a, Typeable b) => a -> Blame b
+cast = MkBlame . fromAny . toAny
+
