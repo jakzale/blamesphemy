@@ -31,13 +31,13 @@ fromAny (Any r v)
 
 newtype Blame a = MkBlame { unBlame :: Maybe a }
 
--- Looks awfully similar to the cast, especially cast on base types
+-- My conjecture is that this is similar to cast on base types...
 instance Functor Blame where
   fmap f a = MkBlame $ do
     b <- unBlame a
     pure $ f b
 
--- Looks awfully similar to the cast, especially cast on functions
+-- My conjecture is that this is similar to a cast between function types...
 instance Applicative Blame where
   pure    = MkBlame . pure
   f <*> a = MkBlame $ do
@@ -45,7 +45,7 @@ instance Applicative Blame where
     b <- unBlame a
     pure $ g b
 
--- This one also looks awfully similar to cast
+-- My conjecture is that is similar to a cast between Any => (Any -> Any)...
 instance Monad Blame where
   a >>= f = MkBlame $ do
     b <- unBlame a
