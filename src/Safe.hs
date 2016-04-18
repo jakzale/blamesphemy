@@ -4,17 +4,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Safe where
 
 import Type.Reflection
 import Data.Maybe
-import Test.HUnit
-
 
 data Any where
   Any :: forall a. TypeRep a -> a -> Any
@@ -31,13 +26,11 @@ fromAny (Any r v)
 
 newtype Blame a = MkBlame { unBlame :: Maybe a }
 
--- My conjecture is that this is similar to cast on base types...
 instance Functor Blame where
   fmap f a = MkBlame $ do
     b <- unBlame a
     pure $ f b
 
--- My conjecture is that this is similar to a cast between function types...
 instance Applicative Blame where
   pure    = MkBlame . pure
   f <*> a = MkBlame $ do
@@ -45,13 +38,53 @@ instance Applicative Blame where
     b <- unBlame a
     pure $ g b
 
--- My conjecture is that is similar to a cast between Any => (Any -> Any)...
 instance Monad Blame where
   a >>= f = MkBlame $ do
     b <- unBlame a
     unBlame $ f b
 
--- Simple implementation of cast
-cast :: (Typeable a, Typeable b) => a -> Blame b
-cast = MkBlame . fromAny . toAny
+class (Typeable a, Typeable b) => Consistent a b where
+  cast :: a -> b
+
+instance (Typeable a) => Consistent (Blame a) (Blame Any) where
+  cast x = do
+    v <- x
+    MkBlame . pure $ toAny v
+
+instance (Typeable b) => Consistent (Blame Any) (Blame b) where
+  cast x = do
+    v <- x
+    MkBlame $ fromAny v
+
+instance (Typeable a, Typeable b, Typeable c, Typeable d, Consistent (Blame c) (Blame a), Consistent (Blame b) (Blame d)) => Consistent (Blame a -> Blame b) (Blame c -> Blame d) where
+  cast f = cast @(Blame b) @(Blame d) . f . cast @(Blame c) @(Blame a)
+
+instance Consistent (Blame (Any -> Any)) (Blame Any) where
+  cast x = do
+    f <- x
+    MkBlame . pure . toAny $ f
+
+-- This cast is consistent
+instance Consistent (Blame Any) (Blame (Any -> Any)) where
+  cast x = do
+    v <- x
+    MkBlame . fromAny $ v
+
+foo :: Integer -> Integer
+foo = (+5)
+
+fooB :: Blame Integer -> Blame Integer
+fooB = (<$>) foo
+
+fooA :: Blame Any -> Blame Any
+fooA = cast fooB
+
+iB :: Blame Integer
+iB = pure 3
+
+iA :: Blame Any
+iA = cast iB
+
+test :: Maybe Integer
+test = unBlame $ cast $ fooA iA
 
