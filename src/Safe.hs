@@ -7,6 +7,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Safe where
 
@@ -51,6 +52,39 @@ test = cast @(Integer) @(Integer) undefined
 test' :: Maybe Integer -> Maybe Integer
 test' = cast @(Integer -> Integer) @(Integer -> Integer) undefined
 
+type family S (a :: *) :: * where
+  S (a -> b) = Maybe (S' a -> S b) 
+  S a        = Maybe a
+
+type family S' (a :: *) :: * where
+  S' (a -> b) = S (a -> b)
+  S' a        = a
+
+class (Typeable a, Typeable b) => Cons a b where
+  cst :: a -> S b
+
+instance Cons Any Any where
+  cst = pure
+
+instance Cons Any (Any -> Any) where
+  cst a = (undefined :: Maybe (Any -> Maybe Any))
+
+{-
+
+-- I am not sure if this is decidable...
+instance (Cons c a, Cons b d) => Cons (a -> b) (c -> d) where
+  cst f = pure g
+    where
+      g :: S' c -> S d
+      g x = do
+        y <- cst @(c) @(a) _
+        cst @(b) @(d) (f y)
+-}
+
+instance (Cons c a, Cons b d) => Cons (a -> b) (c -> d) where
+  cst f = undefined
+
+-- instance 
 {-
 instance Consistent a a where
   -- cast :: S a ~ Maybe a => a -> S a
