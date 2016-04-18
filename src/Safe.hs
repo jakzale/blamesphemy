@@ -8,6 +8,19 @@
 
 module Safe where
 
+ {-
+  Looks nice, but unfortunately bog useless :P.
+
+  Still working on the implementation of safe casts...
+
+  I thought that it could be a simple monad, but maybe I need to use a GADT to
+  handle that.  For instance, I need a way to cast from a -> b to Any -> Any
+  and still manage it somehow.
+
+  I guess I will read about type and effect systems for now...
+
+  -}
+
 import Type.Reflection
 import Data.Maybe
 
