@@ -18,7 +18,7 @@ library
   hs-source-dirs:
       src
   exposed-modules:
-      UnSafe
+      Unsafe
     , Safe
   build-depends:
       base >= 4.9 && < 5
