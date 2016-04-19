@@ -8,21 +8,7 @@
 
 module Safe where
 
- {-
-  Looks nice, but unfortunately bog useless :P.
-
-  Still working on the implementation of safe casts...
-
-  I thought that it could be a simple monad, but maybe I need to use a GADT to
-  handle that.  For instance, I need a way to cast from a -> b to Any -> Any
-  and still manage it somehow.
-
-  I guess I will read about type and effect systems for now...
-
-  -}
-
 import Type.Reflection
-import Data.Maybe
 
 data Any where
   Any :: forall a. TypeRep a -> a -> Any
@@ -37,67 +23,51 @@ fromAny (Any r v)
     pure v
       where q = (typeRep :: TypeRep a)
 
-newtype Blame a = MkBlame { unBlame :: Maybe a }
-
-instance Functor Blame where
-  fmap f a = MkBlame $ do
-    b <- unBlame a
-    pure $ f b
-
-instance Applicative Blame where
-  pure    = MkBlame . pure
-  f <*> a = MkBlame $ do
-    g <- unBlame f
-    b <- unBlame a
-    pure $ g b
-
-instance Monad Blame where
-  a >>= f = MkBlame $ do
-    b <- unBlame a
-    unBlame $ f b
-
 class (Typeable a, Typeable b) => Consistent a b where
-  cast :: a -> b
+  cast :: a -> Maybe b
 
-instance (Typeable a) => Consistent (Blame a) (Blame Any) where
-  cast x = do
-    v <- x
-    MkBlame . pure $ toAny v
+instance (Typeable a) => Consistent a a where
+  cast = pure
 
-instance (Typeable b) => Consistent (Blame Any) (Blame b) where
-  cast x = do
-    v <- x
-    MkBlame $ fromAny v
+instance (Typeable a) => Consistent a Any where
+  cast = pure . toAny
 
-instance (Typeable a, Typeable b, Typeable c, Typeable d, Consistent (Blame c) (Blame a), Consistent (Blame b) (Blame d)) => Consistent (Blame a -> Blame b) (Blame c -> Blame d) where
-  cast f = cast @(Blame b) @(Blame d) . f . cast @(Blame c) @(Blame a)
+instance (Typeable b) => Consistent Any b where
+  cast = fromAny
 
-instance Consistent (Blame (Any -> Any)) (Blame Any) where
-  cast x = do
-    f <- x
-    MkBlame . pure . toAny $ f
+instance (Consistent c a, Consistent b d) => Consistent (a -> Maybe b) (c -> Maybe d) where
+  cast f = pure g
+    where g :: c -> Maybe d
+          g x = do
+            v <- cast @(c) @(a) x
+            y <- f v
+            cast @(b) @(d) y
 
--- This cast is consistent
-instance Consistent (Blame Any) (Blame (Any -> Any)) where
-  cast x = do
-    v <- x
-    MkBlame . fromAny $ v
+instance (Consistent a Any, Consistent b Any) => Consistent (a -> Maybe b) Any where
+  cast f = do
+    f' <- cast @(a -> Maybe b) @(Any -> Maybe Any) f
+    cast @(Any -> Maybe Any) @(Any) f'
 
-foo :: Integer -> Integer
-foo = (+5)
 
-fooB :: Blame Integer -> Blame Integer
-fooB = (<$>) foo
+instance {-# OVERLAPPING #-} Consistent (Any -> Maybe Any) Any where
+  cast = pure . toAny
 
-fooA :: Blame Any -> Blame Any
-fooA = cast fooB
+instance {-# OVERLAPPING #-} Consistent Any (Any -> Maybe Any) where
+  cast = fromAny
 
-iB :: Blame Integer
-iB = pure 3
+instance {-# OVERLAPPING #-} Consistent Any Any where
+  cast = pure
 
-iA :: Blame Any
-iA = cast iB
+-- Static Test Suite
 
-test :: Maybe Integer
-test = unBlame $ cast $ fooA iA
+should_compile1 :: Any -> Maybe Any
+should_compile1 = cast @(Any) @(Any)
 
+should_compile2 :: Any -> Maybe (Any -> Maybe Any)
+should_compile2 = cast @(Any) @(Any -> Maybe Any)
+
+should_compile3 :: (Any -> Maybe Any) -> Maybe Any
+should_compile3 = cast @(Any -> Maybe Any) @(Any)
+
+should_compile4 :: forall a b c d. (Consistent c a, Consistent b d) => (a -> Maybe b) -> Maybe (c -> Maybe d)
+should_compile4 = cast @(a -> Maybe b) @(c -> Maybe d)

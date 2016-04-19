@@ -34,7 +34,7 @@ class Consistent a b where
 
 
 -- This instance is incoherent, as it is the most general, but it should always hold first!
-instance {-# INCOHERENT #-} Consistent a a where
+instance {-# OVERLAPPING #-} Consistent a a where
   cast = id
 
 instance (Typeable a) => Consistent a Any where
