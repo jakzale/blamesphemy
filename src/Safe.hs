@@ -31,8 +31,11 @@ data FromAny
 data Fun a b
 
 -- Not sure if this bits needed
+-- Should not theese bits thread information?
+-- It could be useful...
 data Squish
 data Grow
+
 
 class (Typeable a, Typeable b) => Safer a b p where
   safer :: p -> a -> Maybe b
