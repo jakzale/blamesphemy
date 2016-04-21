@@ -46,10 +46,6 @@ instance (Typeable a) => Safer a Any ToAny where
 instance (Typeable b) => Safer Any b FromAny where
   safer _ = fromAny
 
-type family Swap a where
-  Swap ToAny   = FromAny
-  Swap FromAny = ToAny
-
 instance (Safer c a p, Safer b d q) => Safer (a -> Maybe b) (c -> Maybe d) (Fun p q) where
   safer _ f = pure g
     where g :: c -> Maybe d
