@@ -27,12 +27,7 @@ fromAny (Any r v)
 data Same
 data ToAny
 data FromAny
-
 data Fun a b
-
--- Not sure if this bits needed
--- Should not theese bits thread information?
--- It could be useful...
 data Squish
 data Grow
 
