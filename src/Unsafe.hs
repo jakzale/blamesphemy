@@ -4,6 +4,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- Unsafe version of the gradually typed calculus
 module Unsafe where
@@ -26,54 +28,57 @@ fromAny (Any r v)
     pure v
       where q = (typeRep :: TypeRep a)
 
--- Next to model type consistency
--- NOTE: This implements consistent cast, which will be statically enforced to
--- occur only between consistent types.
-class Consistent a b where
-  cast :: a -> b
+data Same
+data ToAny
+data FromAny
+data Fun a b
+data Squish
+data Grow
 
+type family How a b where
+  How Any          (Any -> Any) = FromAny
+  How Any          (a   -> b)   = Grow
+  How Any          a            = FromAny
+  How (Any -> Any) Any          = ToAny
+  How (a -> b)     Any          = Squish
+  How (a -> b)     (c -> d)     = Fun (How c a) (How b d)
+  How a            Any          = ToAny
+  How a            a            = Same
 
--- This instance is incoherent, as it is the most general, but it should always hold first!
-instance {-# INCOHERENT #-} Consistent a a where
-  cast = id
+class (Typeable a, Typeable b) => Unsafer a b p where
+  unsafer :: p -> a -> b
 
-instance (Typeable a) => Consistent a Any where
-  cast = toAny
+instance (Typeable a) => Unsafer a a Same where
+  unsafer _ = id 
 
-instance (Typeable b) => Consistent Any b where
-  cast = fromJust . fromAny
+instance (Typeable a) => Unsafer a Any ToAny where
+  unsafer _ = toAny
 
-instance {-# OVERLAPPING #-} Consistent Any Any where
-  cast = id
+instance (Typeable b) => Unsafer Any b FromAny where
+  unsafer _ = fromJust . fromAny
 
+instance (Unsafer c a p, Unsafer b d q) => Unsafer (a -> b) (c -> d) (Fun p q) where
+  unsafer _ f = g
+    where g :: c -> d
+          g x = unsafer @(b) @(d) @(q) undefined y
+            where
+              x'  = unsafer @(c) @(a) @(p) undefined x
+              y   = f x'
 
--- wrap rule
-instance (Consistent c a, Consistent b d) => Consistent (a->b) (c->d) where
-  cast f = g
+instance (Unsafer Any a FromAny, Unsafer b Any ToAny) => Unsafer (a -> b) Any Squish where
+  unsafer _ f = g
     where
-      g :: c -> d
-      g x = cast @(b) @(d) (f (cast @(c) @(a) x))
+      f' = unsafer @(a -> b) @(Any -> Any) @(Fun FromAny ToAny) undefined f 
+      g  = unsafer @(Any -> Any) @(Any) @(ToAny) undefined f'
+    
+instance (Unsafer a Any ToAny, Unsafer Any b FromAny) => Unsafer Any (a -> b) Grow where
+  unsafer _ f = g
+    where
+      f' = unsafer @(Any) @(Any -> Any) @(FromAny) undefined f
+      g  = unsafer @(Any -> Any) @(a -> b) @(Fun ToAny FromAny) undefined f'
 
--- Special behavriour when casting from Any to (Any -> Any)
-instance {-# OVERLAPPING #-} Consistent Any (Any -> Any) where
-  cast (Any r f)
-    = case r `eqTypeRep` TRFun (typeRep :: TypeRep Any) (typeRep :: TypeRep Any) of
-        Just HRefl -> f
-        Nothing -> error "not a function"
-
--- Special behaviour when casting from (Any -> Any) to Any
--- WARNING!: Necessary to prevent circular aplications of (a->b) to Any
-instance {-# OVERLAPPING #-} Consistent (Any -> Any) Any where
-  cast = toAny
-
--- Decomposing a cast from Any to (a->b)
-instance {-# OVERLAPPING #-} (Typeable a, Typeable b) => Consistent Any (a->b) where
-  cast f = cast @(Any -> Any) @(a -> b) (cast @(Any) @(Any -> Any) f)
-
--- Decomposig a cast from (a->b) to Any
-instance {-# OVERLAPPING #-} (Typeable a, Typeable b) => Consistent (a->b) Any where
-  cast f = cast @(Any -> Any) @(Any) (cast @(a -> b) @(Any -> Any) f)
-
+cast :: forall a b. (Unsafer a b (How a b)) => a -> b
+cast = unsafer (undefined :: How a b)
 
 -- Static Test Suite
 should_compile1 :: Any -> Any
@@ -84,9 +89,6 @@ should_compile2 = cast @(Any) @(Any -> Any)
 
 should_compile3 :: (Any -> Any) -> Any
 should_compile3 = cast @(Any->Any) @(Any)
-
-should_compile4 :: forall a b c d. (Consistent c a, Consistent b d) => (a -> b) -> (c -> d)
-should_compile4 = cast @(a->b) @(c->d)
 
 
 -- Dynamic Test Suite
