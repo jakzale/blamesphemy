@@ -36,6 +36,16 @@ data Fun a b
 data Squish
 data Grow
 
+type family How a b where
+  How Any                (Any -> Maybe Any) = FromAny
+  How Any                (a   -> Maybe b)   = Grow
+  How Any                a                  = FromAny
+  How (Any -> Maybe Any) Any                = ToAny
+  How (a -> Maybe b)     Any                = Squish
+  How (a -> Maybe b)     (c -> Maybe d)     = Fun (How c a) (How b d)
+  How a                  Any                = ToAny
+  How a                  a                  = Same
+
 
 class (Typeable a, Typeable b) => Safer a b p where
   safer :: p -> a -> Maybe b
@@ -68,16 +78,28 @@ instance (Safer a Any ToAny, Safer Any b FromAny) => Safer Any (a -> Maybe b) Gr
     f' <- safer @(Any) @(Any -> Maybe Any) @(FromAny) undefined f
     safer @(Any -> Maybe Any) @(a -> Maybe b) @(Fun ToAny FromAny) undefined f'
 
+cast :: forall a b. (Safer a b (How a b)) => a -> Maybe b
+cast = safer (undefined :: How a b)
+
 -- This bit seems to work
 example1 = safer @(Integer) @(Any) @(ToAny) undefined 2
+example1' = cast @(Integer) @(Any) 2
+
 example2 = do
   x <- example1
   safer @(Any) @(Integer) @(FromAny) undefined x
+example2' = do
+  x <- example1'
+  cast @(Any) @(Integer) x
 
 example3 = do
   a <- safer @(Integer -> Maybe Integer) @(Any) @(Squish) undefined (pure . (+5))
   b <- safer @(Any) @(Any -> Maybe Any) @(FromAny) undefined a
   c <- safer @(Any -> Maybe Any) @(Integer -> Maybe Integer) @(Fun ToAny FromAny) undefined b
   c 3
-
+example3' = do
+  a <- cast @(Integer -> Maybe Integer) @(Any) (pure . (+5))
+  b <- cast @(Any) @(Any -> Maybe Any) a
+  c <- cast @(Any -> Maybe Any) @(Integer -> Maybe Integer) b
+  c 3
 
