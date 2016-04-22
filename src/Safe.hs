@@ -7,11 +7,15 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Safe where
 
 import Type.Reflection
 import Data.Proxy
+import GHC.TypeLits
+
 
 data Any where
   Any :: forall a. TypeRep a -> a -> Any
@@ -33,7 +37,6 @@ data Cast = Same
           | Squish
           | Grow
 
-
 type family How a b :: Cast where
   How Any                (Any -> Maybe Any) = FromAny
   How Any                (a   -> Maybe b)   = Grow
@@ -43,6 +46,10 @@ type family How a b :: Cast where
   How (a -> Maybe b)     (c -> Maybe d)     = Fun (How c a) (How b d)
   How a                  Any                = ToAny
   How a                  a                  = Same
+  How a                  b                  =
+    TypeError (Text "Casting between inconsistent types:" :$$:
+                (Text "cast from " :<>: ShowType a :<>: Text " to "
+                  :<>: ShowType b :<>: Text " is not consistent!"))
 
 
 class (Typeable a, Typeable b) => Safer a b (p :: Cast) where
@@ -101,3 +108,4 @@ example3' = do
   c <- cast @(Any -> Maybe Any) @(Integer -> Maybe Integer) b
   c 3
 
+example4 = cast @(Integer) @(Bool) 1
