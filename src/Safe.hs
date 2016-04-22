@@ -6,10 +6,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
 
 module Safe where
 
 import Type.Reflection
+import Data.Proxy
 
 data Any where
   Any :: forall a. TypeRep a -> a -> Any
@@ -24,14 +26,15 @@ fromAny (Any r v)
     pure v
       where q = (typeRep :: TypeRep a)
 
-data Same
-data ToAny
-data FromAny
-data Fun a b
-data Squish
-data Grow
+data Constraint = Same
+                | ToAny
+                | FromAny
+                | Fun Constraint Constraint
+                | Squish
+                | Grow
 
-type family How a b where
+
+type family How a b :: Constraint where
   How Any                (Any -> Maybe Any) = FromAny
   How Any                (a   -> Maybe b)   = Grow
   How Any                a                  = FromAny
@@ -42,8 +45,8 @@ type family How a b where
   How a                  a                  = Same
 
 
-class (Typeable a, Typeable b) => Safer a b p where
-  safer :: p -> a -> Maybe b
+class (Typeable a, Typeable b) => Safer a b (p :: Constraint) where
+  safer :: Proxy p -> a -> Maybe b
 
 instance (Typeable a) => Safer a a Same where
   safer _ = pure
@@ -74,7 +77,7 @@ instance (Safer a Any ToAny, Safer Any b FromAny) => Safer Any (a -> Maybe b) Gr
     safer @(Any -> Maybe Any) @(a -> Maybe b) @(Fun ToAny FromAny) undefined f'
 
 cast :: forall a b. (Safer a b (How a b)) => a -> Maybe b
-cast = safer (undefined :: How a b)
+cast = safer (undefined :: Proxy (How a b))
 
 -- This bit seems to work
 example1 = safer @(Integer) @(Any) @(ToAny) undefined 2

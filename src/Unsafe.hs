@@ -6,12 +6,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
 
 -- Unsafe version of the gradually typed calculus
 module Unsafe where
 
 import Type.Reflection
 import Data.Maybe
+import Data.Proxy
 import Test.HUnit
 
 
@@ -28,14 +30,15 @@ fromAny (Any r v)
     pure v
       where q = (typeRep :: TypeRep a)
 
-data Same
-data ToAny
-data FromAny
-data Fun a b
-data Squish
-data Grow
+data Constraint = Same
+                | ToAny
+                | FromAny
+                | Fun Constraint Constraint
+                | Squish
+                | Grow
 
-type family How a b where
+
+type family How a b :: Constraint where
   How Any          (Any -> Any) = FromAny
   How Any          (a   -> b)   = Grow
   How Any          a            = FromAny
@@ -45,8 +48,8 @@ type family How a b where
   How a            Any          = ToAny
   How a            a            = Same
 
-class (Typeable a, Typeable b) => Unsafer a b p where
-  unsafer :: p -> a -> b
+class (Typeable a, Typeable b) => Unsafer a b (p :: Constraint) where
+  unsafer :: Proxy p -> a -> b
 
 instance (Typeable a) => Unsafer a a Same where
   unsafer _ = id 
@@ -78,7 +81,7 @@ instance (Unsafer a Any ToAny, Unsafer Any b FromAny) => Unsafer Any (a -> b) Gr
       g  = unsafer @(Any -> Any) @(a -> b) @(Fun ToAny FromAny) undefined f'
 
 cast :: forall a b. (Unsafer a b (How a b)) => a -> b
-cast = unsafer (undefined :: How a b)
+cast = unsafer (undefined :: Proxy (How a b))
 
 -- Static Test Suite
 should_compile1 :: Any -> Any
