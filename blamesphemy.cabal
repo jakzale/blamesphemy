@@ -6,7 +6,7 @@ homepage:            http://github.com/jakzale/blamesphemy#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Jakub Zalewski
-maintainer:          jakzale@gmail.com
+maintainer:          Jakub Zalewski <jakzale@gmail.com>
 copyright:           Copyright: (c) 2016 Jakub Zalewski
 category:            Compilers/Interpreters
 build-type:          Simple
