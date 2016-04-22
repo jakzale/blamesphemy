@@ -5,48 +5,19 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
 
 -- Unsafe version of the gradually typed calculus
 module Unsafe where
 
-import Type.Reflection
-import Data.Maybe
+import Type.Reflection (Typeable, TypeRep, typeRep)
+import Data.Maybe (fromJust)
 import Data.Proxy
+import Checker
+import Any
 import Test.HUnit
 
-
-data Any where
-  Any :: forall a. TypeRep a -> a -> Any
-
-toAny :: (Typeable a) => a -> Any
-toAny v = Any typeRep v
-
-fromAny :: forall a. (Typeable a) => Any -> Maybe a
-fromAny (Any r v)
-  = do
-    HRefl <- r `eqTypeRep` q
-    pure v
-      where q = (typeRep :: TypeRep a)
-
-data Cast = Same
-          | ToAny
-          | FromAny
-          | Fun Cast Cast
-          | Squish
-          | Grow
-
-
-type family How a b :: Cast where
-  How Any          (Any -> Any) = FromAny
-  How Any          (a   -> b)   = Grow
-  How Any          a            = FromAny
-  How (Any -> Any) Any          = ToAny
-  How (a -> b)     Any          = Squish
-  How (a -> b)     (c -> d)     = Fun (How c a) (How b d)
-  How a            Any          = ToAny
-  How a            a            = Same
 
 class (Typeable a, Typeable b) => Unsafer a b (p :: Cast) where
   unsafer :: Proxy p -> a -> b
@@ -80,8 +51,8 @@ instance (Unsafer a Any ToAny, Unsafer Any b FromAny) => Unsafer Any (a -> b) Gr
       f' = unsafer @(Any) @(Any -> Any) @(FromAny) undefined f
       g  = unsafer @(Any -> Any) @(a -> b) @(Fun ToAny FromAny) undefined f'
 
-cast :: forall a b. (Unsafer a b (How a b)) => a -> b
-cast = unsafer (undefined :: Proxy (How a b))
+cast :: forall a b. (Unsafer a b (Duh a b)) => a -> b
+cast = unsafer (undefined :: Proxy (Duh a b))
 
 -- Static Test Suite
 should_compile1 :: Any -> Any

@@ -5,51 +5,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeOperators #-}
 
-module Safe where
+module Safe
+  ( Safer
+  , cast
+  ) where
 
-import Type.Reflection
-import Data.Proxy
-import GHC.TypeLits
-
-
-data Any where
-  Any :: forall a. TypeRep a -> a -> Any
-
-toAny :: forall a. (Typeable a) => a -> Any
-toAny v = Any typeRep v
-
-fromAny :: forall a. (Typeable a) => Any -> Maybe a
-fromAny (Any r v)
-  = do
-    HRefl <- r `eqTypeRep` q
-    pure v
-      where q = (typeRep :: TypeRep a)
-
-data Cast = Same
-          | ToAny
-          | FromAny
-          | Fun Cast Cast
-          | Squish
-          | Grow
-
-type family How a b :: Cast where
-  How Any                (Any -> Maybe Any) = FromAny
-  How Any                (a   -> Maybe b)   = Grow
-  How Any                a                  = FromAny
-  How (Any -> Maybe Any) Any                = ToAny
-  How (a -> Maybe b)     Any                = Squish
-  How (a -> Maybe b)     (c -> Maybe d)     = Fun (How c a) (How b d)
-  How a                  Any                = ToAny
-  How a                  a                  = Same
-  How a                  b                  =
-    TypeError (Text "Casting between inconsistent types:" :$$:
-                (Text "cast from " :<>: ShowType a :<>: Text " to "
-                  :<>: ShowType b :<>: Text " is not consistent!"))
+import Type.Reflection (Typeable, TypeRep, typeRep)
+import Data.Proxy (Proxy)
+import Checker
+import Any
 
 
 class (Typeable a, Typeable b) => Safer a b (p :: Cast) where
@@ -107,5 +74,3 @@ example3' = do
   b <- cast @(Any) @(Any -> Maybe Any) a
   c <- cast @(Any -> Maybe Any) @(Integer -> Maybe Integer) b
   c 3
-
-example4 = cast @(Integer) @(Bool) 1

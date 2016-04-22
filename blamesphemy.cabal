@@ -20,6 +20,9 @@ library
   exposed-modules:
       Unsafe
     , Safe
+  other-modules:
+      Checker
+    , Any
   build-depends:
       base >= 4.9 && < 5
     , HUnit == 1.3.1.*
