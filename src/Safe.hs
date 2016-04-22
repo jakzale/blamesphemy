@@ -26,15 +26,15 @@ fromAny (Any r v)
     pure v
       where q = (typeRep :: TypeRep a)
 
-data Constraint = Same
-                | ToAny
-                | FromAny
-                | Fun Constraint Constraint
-                | Squish
-                | Grow
+data Cast = Same
+          | ToAny
+          | FromAny
+          | Fun Cast Cast
+          | Squish
+          | Grow
 
 
-type family How a b :: Constraint where
+type family How a b :: Cast where
   How Any                (Any -> Maybe Any) = FromAny
   How Any                (a   -> Maybe b)   = Grow
   How Any                a                  = FromAny
@@ -45,7 +45,7 @@ type family How a b :: Constraint where
   How a                  a                  = Same
 
 
-class (Typeable a, Typeable b) => Safer a b (p :: Constraint) where
+class (Typeable a, Typeable b) => Safer a b (p :: Cast) where
   safer :: Proxy p -> a -> Maybe b
 
 instance (Typeable a) => Safer a a Same where
