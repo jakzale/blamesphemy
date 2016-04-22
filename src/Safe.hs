@@ -9,8 +9,7 @@
 {-# LANGUAGE DataKinds #-}
 
 module Safe
-  ( Safer
-  , cast
+  ( cast
   ) where
 
 import Type.Reflection (Typeable, TypeRep, typeRep)

@@ -9,7 +9,9 @@
 {-# LANGUAGE DataKinds #-}
 
 -- Unsafe version of the gradually typed calculus
-module Unsafe where
+module Unsafe
+  ( cast
+  ) where
 
 import Type.Reflection (Typeable, TypeRep, typeRep)
 import Data.Maybe (fromJust)
