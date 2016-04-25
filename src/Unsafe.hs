@@ -15,7 +15,7 @@ module Unsafe
 
 import Type.Reflection (Typeable, TypeRep, typeRep)
 import Data.Maybe (fromJust)
-import Data.Proxy
+import Data.Proxy (Proxy(Proxy))
 import Checker
 import Any
 import Test.HUnit
@@ -36,25 +36,25 @@ instance (Typeable b) => Unsafer Any b FromAny where
 instance (Unsafer c a p, Unsafer b d q) => Unsafer (a -> b) (c -> d) (Fun p q) where
   unsafer _ f = g
     where g :: c -> d
-          g x = unsafer @(b) @(d) @(q) undefined y
+          g x = unsafer @(b) @(d) @(q) Proxy y
             where
-              x'  = unsafer @(c) @(a) @(p) undefined x
+              x'  = unsafer @(c) @(a) @(p) Proxy x
               y   = f x'
 
 instance (Unsafer Any a FromAny, Unsafer b Any ToAny) => Unsafer (a -> b) Any Squish where
   unsafer _ f = g
     where
-      f' = unsafer @(a -> b) @(Any -> Any) @(Fun FromAny ToAny) undefined f 
-      g  = unsafer @(Any -> Any) @(Any) @(ToAny) undefined f'
+      f' = unsafer @(a -> b) @(Any -> Any) @(Fun FromAny ToAny) Proxy f 
+      g  = unsafer @(Any -> Any) @(Any) @(ToAny) Proxy f'
     
 instance (Unsafer a Any ToAny, Unsafer Any b FromAny) => Unsafer Any (a -> b) Grow where
   unsafer _ f = g
     where
-      f' = unsafer @(Any) @(Any -> Any) @(FromAny) undefined f
-      g  = unsafer @(Any -> Any) @(a -> b) @(Fun ToAny FromAny) undefined f'
+      f' = unsafer @(Any) @(Any -> Any) @(FromAny) Proxy f
+      g  = unsafer @(Any -> Any) @(a -> b) @(Fun ToAny FromAny) Proxy f'
 
 cast :: forall a b. (Unsafer a b (Duh a b)) => a -> b
-cast = unsafer (undefined :: Proxy (Duh a b))
+cast = unsafer (Proxy :: Proxy (Duh a b))
 
 -- Static Test Suite
 should_compile1 :: Any -> Any

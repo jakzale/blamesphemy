@@ -13,7 +13,7 @@ module Safe
   ) where
 
 import Type.Reflection (Typeable, TypeRep, typeRep)
-import Data.Proxy (Proxy)
+import Data.Proxy (Proxy(Proxy))
 import Checker
 import Any
 
@@ -34,39 +34,39 @@ instance (Safer c a p, Safer b d q) => Safer (a -> Maybe b) (c -> Maybe d) (Fun 
   safer _ f = pure g
     where g :: c -> Maybe d
           g x = do
-            x' <- safer @(c) @(a) @(p) undefined x
+            x' <- safer @(c) @(a) @(p) Proxy x
             y  <- f x'
-            safer @(b) @(d) @(q) undefined y
+            safer @(b) @(d) @(q) Proxy y
 
  -- This one is slighlty troublesome
 instance (Safer Any a FromAny, Safer b Any ToAny) => Safer (a -> Maybe b) Any Squish where
   safer _ f = do
-    f' <- safer @(a -> Maybe b) @(Any -> Maybe Any) @(Fun FromAny ToAny) undefined f
-    safer @(Any -> Maybe Any) @(Any) @(ToAny) undefined f'
+    f' <- safer @(a -> Maybe b) @(Any -> Maybe Any) @(Fun FromAny ToAny) Proxy f
+    safer @(Any -> Maybe Any) @(Any) @(ToAny) Proxy f'
 
 instance (Safer a Any ToAny, Safer Any b FromAny) => Safer Any (a -> Maybe b) Grow where
   safer _ f = do
-    f' <- safer @(Any) @(Any -> Maybe Any) @(FromAny) undefined f
-    safer @(Any -> Maybe Any) @(a -> Maybe b) @(Fun ToAny FromAny) undefined f'
+    f' <- safer @(Any) @(Any -> Maybe Any) @(FromAny) Proxy f
+    safer @(Any -> Maybe Any) @(a -> Maybe b) @(Fun ToAny FromAny) Proxy f'
 
 cast :: forall a b. (Safer a b (How a b)) => a -> Maybe b
-cast = safer (undefined :: Proxy (How a b))
+cast = safer (Proxy :: Proxy (How a b))
 
 -- This bit seems to work
-example1 = safer @(Integer) @(Any) @(ToAny) undefined 2
+example1 = safer @(Integer) @(Any) @(ToAny) Proxy 2
 example1' = cast @(Integer) @(Any) 2
 
 example2 = do
   x <- example1
-  safer @(Any) @(Integer) @(FromAny) undefined x
+  safer @(Any) @(Integer) @(FromAny) Proxy x
 example2' = do
   x <- example1'
   cast @(Any) @(Integer) x
 
 example3 = do
-  a <- safer @(Integer -> Maybe Integer) @(Any) @(Squish) undefined (pure . (+5))
-  b <- safer @(Any) @(Any -> Maybe Any) @(FromAny) undefined a
-  c <- safer @(Any -> Maybe Any) @(Integer -> Maybe Integer) @(Fun ToAny FromAny) undefined b
+  a <- safer @(Integer -> Maybe Integer) @(Any) @(Squish) Proxy (pure . (+5))
+  b <- safer @(Any) @(Any -> Maybe Any) @(FromAny) Proxy a
+  c <- safer @(Any -> Maybe Any) @(Integer -> Maybe Integer) @(Fun ToAny FromAny) Proxy b
   c 3
 example3' = do
   a <- cast @(Integer -> Maybe Integer) @(Any) (pure . (+5))
