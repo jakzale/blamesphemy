@@ -25,7 +25,7 @@ class (Typeable a, Typeable b) => Unsafer a b (p :: Cast) where
   unsafer :: Proxy p -> a -> b
 
 instance (Typeable a) => Unsafer a a Same where
-  unsafer _ = id 
+  unsafer _ = id
 
 instance (Typeable a) => Unsafer a Any ToAny where
   unsafer _ = toAny
@@ -44,9 +44,9 @@ instance (Unsafer c a p, Unsafer b d q) => Unsafer (a -> b) (c -> d) (Fun p q) w
 instance (Unsafer Any a FromAny, Unsafer b Any ToAny) => Unsafer (a -> b) Any Squish where
   unsafer _ f = g
     where
-      f' = unsafer @(a -> b) @(Any -> Any) @(Fun FromAny ToAny) Proxy f 
+      f' = unsafer @(a -> b) @(Any -> Any) @(Fun FromAny ToAny) Proxy f
       g  = unsafer @(Any -> Any) @(Any) @(ToAny) Proxy f'
-    
+
 instance (Unsafer a Any ToAny, Unsafer Any b FromAny) => Unsafer Any (a -> b) Grow where
   unsafer _ f = g
     where

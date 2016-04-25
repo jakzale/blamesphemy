@@ -43,7 +43,7 @@ type family Duh a b :: Cast where
   Duh (a -> b)     (c -> d)     = Fun (Duh c a) (Duh b d)
   Duh a            Any          = ToAny
   Duh a            a            = Same
-  Duh a            b            = 
+  Duh a            b            =
     TypeError (Text "Casting between inconsistent types:" :$$:
                 (Text "cast from " :<>: ShowType a :<>: Text " to "
                   :<>: ShowType b :<>: Text " is not consistent!"))
