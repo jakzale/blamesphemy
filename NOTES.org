@@ -1,0 +1,21 @@
+* Using Stack to manage alternative versions of GHC
+Recently I have been working with some extensions of GHC, that are
+planned to land (presumably) in version 8.2, therefore there was a
+need of figuring out how to handle working with various versions of
+GHC, that were compiled from source.
+
+Stack already offers that functionality, so I was playing around
+making it work.
+
+** Checking out a custom version of GHC
+So, the particular branch I am working is wip/ttypeable maintained by
+Ben Gamari, so I made a shallow clone of that particular branch from
+his repository
+
+*** Github plumbing
+So there is some necessary plumbing that needs to be done before
+checking out ben's fork.
+
+#+BEGIN_SRC
+git clone --depth 1 https://github.com/bgamari/ghc.git -b wip/ttypeable ghc-ttypeable
+#+END_SRC
