@@ -18,11 +18,13 @@ library
   hs-source-dirs:
       src
   exposed-modules:
-      Unsafe
-    , Safe
+--      Unsafe
+--    , Safe
+      Blamesphemy
+
   other-modules:
-      Checker
-    , Any
+--      Checker
+--    , Any
   build-depends:
       base >= 4.9 && < 5
     , HUnit == 1.3.1.*
